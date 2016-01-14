@@ -1,13 +1,15 @@
 defmodule BakeInstaller do  
   import IO, only: [puts: 1]
+  import Mix.Utils, only: [read_path: 2]
 
   @bake_version "0.1.1"
 
-  # FIXME it's a binary, why is it a tar.gz, we save next to nothing and only increase risk and complexity
   @bake_url "https://s3.amazonaws.com/bakeware/bake/bake-#{@bake_version}.tar.gz"
+  @bake_sha512 "ea71ff9ef5d8737064525a4835483bd489f54f7afad80c6b8d739b943912ea57414b35b4d7823c793c8f4e2f469629dd9e71625d01d12efbd039ecd3820b6171"
 
-  # FIXME this is untrusted, make the bake url be the direct path to binary and drop this
+  # FIXME this is silly, make the bake url be the direct path to escript and drop this step
   @win32_untar_url "http://bitbucket.org/svnpenn/a/downloads/go-untar.exe"
+  @win32_untar_sha512 "a8008f1cf02d8bf8361cb9e7a87886e8a462ba942bbf13f7eba4629a22d0451c6e7162bf878e7fc4f966b6f34c198a2e8453280b296fc8a5c71bd2a6355ca235"
 
   @doc """
   Run a script through bash or powershell using System.cmd
@@ -31,7 +33,11 @@ defmodule BakeInstaller do
     # TODO install fwup and squashfs
   end
 
-  def ps_download(url, dest), do: "(new-object net.webclient).DownloadFile(\"#{url}\", \"#{dest}\")"
+  def get(url, dest, sha512) do
+    {:ok, data} = read_path(url, sha512: sha512)
+    File.write!(dest, data)
+  end
+
   def ps_mkdirp(path), do: "New-Item -path \"#{path}\" -Force -type directory"
 
   def windows_install_bake(install_prefix, bake_home) do
@@ -43,17 +49,10 @@ defmodule BakeInstaller do
     untar = "#{bake_home}\\go-untar.exe"
 
     puts "=> Downloading latest bake"
-
-    {_, exitstatus} = @bake_url |> ps_download(tarball) |> system(win)
-    if exitstatus != 0 do
-      raise "Failed to download bake tarball!"
-    end
+    :ok = get(@bake_url, tarball, @bake_sha512)
 
     puts "=> Downloading untar tool"
-    {_, exitstatus} = @win32_untar_url |> ps_download(untar) |> system(win)
-    if exitstatus != 0 do
-      raise "Failed to download bake tarball!"
-    end
+    :ok = get(@win32_untar_url, untar, @win32_untar_sha512)
 
     {_, exitstatus} = install_prefix |> ps_mkdirp() |> system(win)
     if exitstatus != 0 do
@@ -66,7 +65,7 @@ defmodule BakeInstaller do
       raise "Bake did not install correctly. Check permissions on #{install_prefix}."
     end
 
-    #system("Remove-Item #{tarball}", win)
+    system("Remove-Item #{tarball}", win)
     system("Remove-Item #{untar}", win)
 
     puts "=> bake version #{@bake_version} installed to #{install_prefix}"
@@ -105,7 +104,7 @@ defmodule BakeInstaller do
     end
   end
 
-  def install_bake(install_prefix, bake_home) do
+  def unix_install_bake(install_prefix, bake_home) do
     puts "=> Creating bake home"
     system("mkdir -p #{bake_home}")
 
@@ -135,14 +134,14 @@ defmodule BakeInstaller do
     install_dir = home_dir <> "/bin"
 
     linux_install_deps
-    install_bake(install_dir, home_dir)
+    unix_install_bake(install_dir, home_dir)
 
     puts "Be sure to add #{install_dir} to your path"
   end
 
   def init({:unix, :darwin}) do
     osx_install_deps
-    install_bake('/usr/local/bin', '~/.bake')
+    unix_install_bake('/usr/local/bin', '~/.bake')
   end
 
   def init({:win32, :nt}) do
@@ -153,6 +152,7 @@ defmodule BakeInstaller do
     windows_install_bake(install_dir, home_dir)
 
     puts "Be sure to add #{install_dir} to your path"
+    puts "Try running bake now\n\tescript #{install_dir}\\bake --version"
   end
 
   def init({family, name}) do
