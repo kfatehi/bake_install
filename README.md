@@ -15,3 +15,8 @@ $ elixir -e "case ~s(http://localhost:8000/install.exs) |> Mix.Utils.read_path(s
 # get checksum
 
 curl -L https://rawgit.com/kfatehi/bake_install/master/install.exs | shasum -a 512
+
+
+# windows untar
+
+http://stackoverflow.com/a/29663095
