@@ -155,6 +155,8 @@ defmodule BakeInstaller do
   def init({family, name}) do
     puts "Sorry, support for {:#{family}, :#{name}} isn't implemented yet."
   end
+  
+  def init(), do: :os.type() |> init()
 end
 
-:os.type() |> BakeInstaller.init()
+BakeInstaller.init()

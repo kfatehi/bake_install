@@ -1,3 +1,4 @@
+// from http://stackoverflow.com/a/29663095
 package main
 import (
   "archive/tar"
