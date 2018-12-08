@@ -1,4 +1,4 @@
-URL="https://rawgit.com/kfatehi/bake_install/master/install.exs"
+URL="https://cdn.jsdelivr.net/gh/kfatehi/bake_install@master/install.exs"
 
 SHASUM:=$(shell shasum -a 512 install.exs | awk '{print $$1}' )
 
